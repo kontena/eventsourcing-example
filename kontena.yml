@@ -1,0 +1,109 @@
+stack: kontena/eventsourcing-example
+version: 1.0.3
+variables:
+  num_nodes:
+    type: integer
+    min: 1
+    default: 3
+    from:
+      prompt: How many nodes are in your cluster?
+      env: NUM_NODES
+
+services:
+  # {% assign kafka_broker_list = "" %}
+  # {% for i in (1..num_nodes) %}
+  # {%   capture broker %}kafka-{{ i }}.kafka-cluster.{{ GRID }}.kontena.local:9092{% endcapture %}
+  # {%   assign kafka_broker_list = kafka_broker_list | append: broker %}
+  # {%   if i < num_nodes %}
+  # {%     assign kafka_broker_list = kafka_broker_list | append: "," %}
+  # {%   endif %}
+  # {% endfor %}
+  load-balancer:
+    image: kontena/lb:latest
+    instances: ${num_nodes}
+    ports:
+      - 80:80
+
+  product-service:
+    image: kontena/eventsourcing-example-product-service:latest
+    build: ./src/Kontena.ProductService
+    instances: ${num_nodes}
+    environment:
+      KAFKA_BROKERS: {{ kafka_broker_list }}
+    external_links:
+      - kafka-cluster/kafka
+    hooks:
+      pre_build:
+        - name: restore dotnet packages
+          cmd: cd ./src/Kontena.ProductService && PLATFORM="Any CPU" dotnet restore
+        - name: create dotnet publish packages
+          cmd: cd ./src/Kontena.ProductService && PLATFORM="Any CPU" dotnet publish -c Release -o out
+
+  customer-service:
+    image: kontena/eventsourcing-example-customer-service:latest
+    build: ./src/Kontena.CustomerService
+    instances: ${num_nodes}
+    environment:
+      KAFKA_BROKERS: {{ kafka_broker_list }}
+    external_links:
+      - kafka-cluster/kafka
+    hooks:
+      pre_build:
+        - name: restore dotnet packages
+          cmd: cd ./src/Kontena.CustomerService && PLATFORM="Any CPU" dotnet restore
+        - name: create dotnet publish packages
+          cmd: cd ./src/Kontena.CustomerService && PLATFORM="Any CPU" dotnet publish -c Release -o out
+
+  purchase-service:
+    image: kontena/eventsourcing-example-purchase-service:latest
+    build: ./src/Kontena.PurchaseService
+    instances: ${num_nodes}
+    environment:
+      KAFKA_BROKERS: {{ kafka_broker_list }}
+    external_links:
+      - kafka-cluster/kafka
+    hooks:
+      pre_build:
+        - name: restore dotnet packages
+          cmd: cd ./src/Kontena.PurchaseService && PLATFORM="Any CPU" dotnet restore
+        - name: create dotnet publish packages
+          cmd: cd ./src/Kontena.PurchaseService && PLATFORM="Any CPU" dotnet publish -c Release -o out
+
+  dashboard:
+    image: kontena/eventsourcing-example-dashboard:latest
+    build: ./src/Kontena.Dashboard
+    instances: ${num_nodes}
+    environment:
+      KAFKA_BROKERS: {{ kafka_broker_list }}
+      KONTENA_LB_MODE: http
+      KONTENA_LB_BALANCE: roundrobin
+      KONTENA_LB_INTERNAL_PORT: 9999
+      KONTENA_LB_VIRTUAL_PATH: /
+    depends_on:
+      - product-service
+      - customer-service
+      - purchase-service
+    links:
+      - load-balancer
+    external_links:
+      - kafka-cluster/kafka
+    hooks:
+      pre_build:
+        - name: restore dotnet packages
+          cmd: cd ./src/Kontena.Dashboard && PLATFORM="Any CPU" dotnet restore
+        - name: create dotnet publish packages
+          cmd: cd ./src/Kontena.Dashboard && PLATFORM="Any CPU" dotnet publish -c Release -o out
+
+  client:
+    image: kontena/eventsourcing-example-client:latest
+    build: ./src/Kontena.Client
+    instances: 1
+    environment:
+      PRODUCT_SVC_URL: http://product-service:9995
+      CUSTOMER_SVC_URL: http://customer-service:9996
+      PURCHASE_SVC_URL: http://purchase-service:9997
+    links:
+      - product-service
+      - customer-service
+      - purchase-service
+    command: sleep 10000000

@@ -1,0 +1,6 @@
+require 'json'
+require 'httparty'
+require 'active_support/inflector'
+require_relative './models/customer'
+require_relative './models/product'
+require_relative './models/purchase'
