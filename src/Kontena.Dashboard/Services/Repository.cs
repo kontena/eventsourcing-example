@@ -32,11 +32,13 @@ namespace Kontena.Dashboard.Services
                     id: customer.Id,
                     firstName: customer.FirstName,
                     lastName: customer.LastName,
-                    purchaseCount: _purchases.All().Where(purchase => purchase.CustomerId == customer.Id).
-                                                    Count(),
-                    totalSpent: _purchases.All().Where(purchase => purchase.CustomerId == customer.Id).
-                                                Select(purchase => purchase.Total).
-                                                Sum()
+                    purchaseCount: _purchases.All().
+                                              Where(purchase => purchase.CustomerId == customer.Id).
+                                              Count(),
+                    totalSpent: _purchases.All().
+                                           Where(purchase => purchase.CustomerId == customer.Id).
+                                           Select(purchase => purchase.Total).
+                                           Sum()
                 )).ToList();
         }
 
@@ -49,15 +51,14 @@ namespace Kontena.Dashboard.Services
                 return Enumerable.Empty<CustomerPurchase>();
             }
 
-            return _purchases.
-                All().
-                Where(purchase => purchase.CustomerId == customer.Id).
-                Select(purchase => new CustomerPurchase(
-                    customer: customer,
-                    product: _products.Get(purchase.ProductId),
-                    amountSpent: purchase.Total,
-                    transactionDate: purchase.TransactionDate
-                )).ToList();
+            return _purchases.All().
+                              Where(purchase => purchase.CustomerId == customer.Id).
+                              Select(purchase => new CustomerPurchase(
+                                                        customer: customer,
+                                                        product: _products.Get(purchase.ProductId),
+                                                        amountSpent: purchase.Total,
+                                                        transactionDate: purchase.TransactionDate
+                              )).ToList();
         }
 
         public IEnumerable<ProductPurchases> GetProductsWithPurchases(string productId = null)
@@ -69,15 +70,18 @@ namespace Kontena.Dashboard.Services
                     id: product.Id,
                     name: product.Name,
                     price: product.Price,
-                    purchaseCount: _purchases.All().Where(purchase => purchase.ProductId == product.Id).
-                                                    Count(),
-                    customerCount: _purchases.All().Where(purchase => purchase.ProductId == product.Id).
-                                                    Select(purchase => purchase.CustomerId).
-                                                    Distinct().
-                                                    Count(),
-                    totalSpent: _purchases.All().Where(purchase => purchase.ProductId == product.Id).
-                                                Select(purchase => purchase.Total).
-                                                Sum()
+                    purchaseCount: _purchases.All().
+                                              Where(purchase => purchase.ProductId == product.Id).
+                                              Count(),
+                    customerCount: _purchases.All().
+                                              Where(purchase => purchase.ProductId == product.Id).
+                                              Select(purchase => purchase.CustomerId).
+                                              Distinct().
+                                              Count(),
+                    totalSpent: _purchases.All().
+                                           Where(purchase => purchase.ProductId == product.Id).
+                                           Select(purchase => purchase.Total).
+                                           Sum()
                 )).ToList();
         }
 
